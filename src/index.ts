@@ -1,10 +1,11 @@
 'use strict';
 
 import puppeteer, { Viewport } from 'puppeteer';
-import htmlparser, { DomElement } from 'htmlparser2';
+import { Parser, DomElement, DomHandler, DomUtils } from 'htmlparser2';
 import request from 'request';
+const stew = new(require('stew-select')).Stew();
 
-import { DomOptions } from '@qualweb/get-dom-puppeteer';
+import { DomOptions, Dom, Html } from '@qualweb/get-dom-puppeteer';
 
 /**
  * PAGE USER AGENT
@@ -15,8 +16,8 @@ const DEFAULT_MOBILE_USER_AGENT = 'Mozilla/5.0 (Linux; U; Android 2.2; en-us; DR
 /**
  * Page VIEWPORT size
  */
-const DEFAULT_DESKTOP_PAGE_VIEWPORT_WIDTH = 1920;
-const DEFAULT_DESKTOP_PAGE_VIEWPORT_HEIGHT = 1080;
+const DEFAULT_DESKTOP_PAGE_VIEWPORT_WIDTH = 1366;
+const DEFAULT_DESKTOP_PAGE_VIEWPORT_HEIGHT = 768;
 
 const DEFAULT_MOBILE_PAGE_VIEWPORT_WIDTH = 1920;
 const DEFAULT_MOBILE_PAGE_VIEWPORT_HEIGHT = 1080;
@@ -35,13 +36,7 @@ function get_request_data(headers: (request.UrlOptions & request.CoreOptions)) {
   });
 }
 
-async function getDom(url: string, options?: DomOptions): Promise <any> {
-
-  let sourceHTML: string;
-  let processedHTML: string;
-  let parsedSourceHTML: DomElement[] | null = null;
-  let parsedProcessedHTML: DomElement[] | null = null;
-
+async function getSourceHTML(url: string, options?: DomOptions): Promise<Html> {
   const headers = {
     'url': url,
     'headers': {
@@ -49,10 +44,34 @@ async function getDom(url: string, options?: DomOptions): Promise <any> {
     }
   };
 
-  let data: any = await get_request_data(headers);
+  const data: any = await get_request_data(headers);
+  const sourceHTML: string = data.body.toString().trim();
 
-  sourceHTML = data.body.toString().trim();
+  const parsedHTML = parseHTML(sourceHTML);
+  const elements = stew.select(parsedHTML, '*');
 
+  let title = '';
+
+  const titleElement = stew.select(parsedHTML, 'title');
+
+  if (titleElement.length > 0) {
+    title = DomUtils.getText(titleElement[0]);
+  }
+
+  const source: Html = {
+    html: {
+      plain: sourceHTML,
+      parsed: parsedHTML
+    },
+    elementCount: elements.length,
+    title: title !== '' ? title : undefined
+  }
+
+  return source;
+}
+
+async function getProcessedHTML(url: string, options?: DomOptions): Promise<Html> {
+  
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
 
@@ -96,9 +115,17 @@ async function getDom(url: string, options?: DomOptions): Promise <any> {
     waitUntil: 'networkidle2'
   });
 
-  processedHTML = await page.evaluate((computedStyle, elementsPosition) => {
-    function getStyles(element: any) {
+  const processedHTML = await page.evaluate((computedStyle, elementsPosition, generateIds) => {
+    
+    var id = 1;
+
+    function processData(element) {
       if (element) {
+        if (generateIds && !element.getAttribute('id')) {
+          element.setAttribute('id', 'qw-generated-id-' + id);
+          id++;
+        }
+
         if (computedStyle) {
           element.setAttribute('computed-style', getComputedStyle(element).cssText);
         }
@@ -115,51 +142,79 @@ async function getDom(url: string, options?: DomOptions): Promise <any> {
         if (element.hasChildNodes()) {
           for (var i = 0; i < element.childNodes.length; i++) {
             if (element.childNodes[i].nodeType === 1) {
-              getStyles(element.childNodes[i]);
+              processData(element.childNodes[i]);
             }
           }
         }
       }
     }
 
-    if (computedStyle || elementsPosition) {
-      getStyles(document.activeElement);
+    if (computedStyle || elementsPosition || generateIds) {
+      processData(document.activeElement);
     }
 
     return document.documentElement.outerHTML;
-  }, options ? options.computedStyle || null : null, options ? options.elementsPosition || null : null);
+  }, 
+    options ? options.computedStyle || false : false, 
+    options ? options.elementsPosition || false : false,
+    options ? options.generateIds || false : false);
 
   await browser.close();
 
-  const handler = new htmlparser.DomHandler((error, dom) => {
+  const parsedHTML = parseHTML(processedHTML);
+
+  const elements = stew.select(parsedHTML, '*');
+
+  let title = '';
+
+  const titleElement = stew.select(parsedHTML, 'title');
+
+  if (titleElement.length > 0) {
+    title = DomUtils.getText(titleElement[0]);
+  }
+
+  const processed: Html = {
+    html: {
+      plain: processedHTML,
+      parsed: parsedHTML
+    },
+    elementCount: elements.length,
+    title: title !== '' ? title : undefined
+  }
+
+  return processed;
+}
+
+function parseHTML(html: string): DomElement[] {
+  let parsed: DomElement[] | undefined = undefined;
+
+  const handler = new DomHandler((error, dom) => {
     if (error) {
-      throw new Error(error);
+      throw error;
     } else {
-      parsedProcessedHTML = dom;
+      parsed = dom;
     }
   });
 
-  const parser = new htmlparser.Parser(handler);
-  parser.write(processedHTML.replace(/(\r\n|\n|\r|\t)/gm, ''));
+  const parser = new Parser(handler);
+  parser.write(html.replace(/(\r\n|\n|\r|\t)/gm, ''));
   parser.end();
 
-  const handler2 = new htmlparser.DomHandler((error, dom) => {
-    if (error) {
-      throw new Error(error);
-    } else {
-      parsedSourceHTML = dom;
-    }
-  });
+  if (!parsed) {
+    throw new Error('Failed to parse html');
+  }
 
-  const parser2 = new htmlparser.Parser(handler2);
-  parser2.write(sourceHTML.replace(/(\r\n|\n|\r|\t)/gm, ''));
-  parser2.end();
+  return parsed;
+}
 
+async function getDom(url: string, options?: DomOptions): Promise<Dom> {
+  
+  const source: Html = await getSourceHTML(url, options);
+  const processed: Html = await getProcessedHTML(url, options);
+  
   return {
-    sourceHTML,
-    processedHTML,
-    parsedSourceHTML,
-    parsedProcessedHTML
+    source,
+    processed
   };
 }
 
