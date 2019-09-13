@@ -1,6 +1,6 @@
 {
   "name": "@qualweb/get-dom-puppeteer",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Obtains a DOM from a given url",
   "main": "dist/index.js",
   "types": "./node_modules/@qualweb/types",
@@ -24,19 +24,22 @@
   "author": "João Vicente",
   "license": "ISC",
   "devDependencies": {
-    "@qualweb/types": "0.0.32",
+    "@qualweb/types": "0.0.9",
     "@types/htmlparser2": "^3.10.1",
+    "@types/lodash": "^4.14.138",
     "@types/node": "^12.7.1",
-    "@types/puppeteer": "^1.19.0",
-    "@types/request": "^2.48.2",
+    "@types/puppeteer": "^1.19.1",
+    "@types/request": "^2.48.3",
     "chai": "^4.2.0",
     "mocha": "^6.2.0",
-    "tslint": "^5.18.0",
-    "typescript": "^3.5.3"
+    "tslint": "^5.20.0",
+    "typescript": "^3.6.3"
   },
   "dependencies": {
+    "css": "^2.2.4",
     "htmlparser2": "^3.10.1",
-    "puppeteer": "^1.19.0",
+    "lodash": "^4.17.15",
+    "puppeteer": "^1.20.0",
     "request": "^2.88.0",
     "stew-select": "0.0.5"
   }

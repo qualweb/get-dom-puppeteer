@@ -4,8 +4,10 @@ import puppeteer, { Viewport } from 'puppeteer';
 import { Parser, DomElement, DomHandler, DomUtils } from 'htmlparser2';
 import request from 'request';
 const stew = new(require('stew-select')).Stew();
+import css from 'css';
+import clone from 'lodash/clone';
 
-import { DomOptions, Dom, Html } from '@qualweb/get-dom-puppeteer';
+import { DomOptions, Dom, Html, CSSStylesheet } from '@qualweb/get-dom-puppeteer';
 
 /**
  * PAGE USER AGENT
@@ -70,7 +72,7 @@ async function getSourceHTML(url: string, options?: DomOptions): Promise<Html> {
   return source;
 }
 
-async function getProcessedHTML(url: string, options?: DomOptions): Promise<Html> {
+async function getProcessedHTML(url: string, options?: DomOptions): Promise<any> {
   
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -110,6 +112,15 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<Html
       isLandscape: false
     });
   }
+  const result = {};
+  page.on('response',async response => {
+    if(response.request().resourceType() === 'stylesheet') {
+      // console.warn(await response);
+      let url = await response.url();
+      let content = await response.text();
+      result[url] = content;
+    }
+  });
 
   await page.goto(url, {
     waitUntil: 'networkidle2'
@@ -182,7 +193,7 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<Html
     title: title !== '' ? title : undefined
   }
 
-  return processed;
+  return {processed, result};
 }
 
 function parseHTML(html: string): DomElement[] {
@@ -207,14 +218,32 @@ function parseHTML(html: string): DomElement[] {
   return parsed;
 }
 
+async function parseStylesheets(files: any): Promise<CSSStylesheet[]> {
+  
+  let result: CSSStylesheet[] = new Array<CSSStylesheet>();
+
+  for (const file in files){
+    const stylesheet: CSSStylesheet = {file, content: {}};
+    if (stylesheet.content) {
+      stylesheet.content.plain = files[file];
+      stylesheet.content.parsed = css.parse(files[file], {'silent':true}); //don't throw errors
+      result.push(clone(stylesheet));
+    }
+  }
+  
+  return result;
+}
+
 async function getDom(url: string, options?: DomOptions): Promise<Dom> {
   
   const source: Html = await getSourceHTML(url, options);
-  const processed: Html = await getProcessedHTML(url, options);
+  const { processed, result } = await getProcessedHTML(url, options);
+  const stylesheets: CSSStylesheet[] = await parseStylesheets(result);
   
   return {
     source,
-    processed
+    processed,
+    stylesheets
   };
 }
 

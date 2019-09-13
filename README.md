@@ -16,12 +16,16 @@
   const { getDom } = require('@qualweb/get-dom-puppeteer');
 
   (async () => {
-    const dom = await getDom('https://act-rules.github.io/pages/about/');
+    const { source, processed } = await getDom('https://act-rules.github.io/pages/about/');
 
-    console.log(dom.sourceHTML); // html before javascript processing
-    console.log(dom.parsedSourceHTML); // source html parsed by 'htmlparser2' (https://github.com/fb55/htmlparser2)
-    console.log(dom.processedHTML); // html after javascript processing
-    console.log(dom.parsedProcessedHTML); // processed html parsed by 'htmlparser2' (https://github.com/fb55/htmlparser2)
+    console.log(source.html.plain); // html before javascript processing
+    console.log(source.html.parsed); // source html parsed by 'htmlparser2' (https://github.com/fb55/htmlparser2)
+    console.log(source.elementCount); // number of elements of the source html
+    console.log(source.title); // title of the source html, if exist
+    console.log(processed.html.plain); // html after javascript processing
+    console.log(processed.html.parsed); // processed html parsed by 'htmlparser2' (https://github.com/fb55/htmlparser2)
+    console.log(processed.elementCount); // number of elements of the processed html
+    console.log(processed.title); // title of the processed html, if exist
   })();
 ```
 
