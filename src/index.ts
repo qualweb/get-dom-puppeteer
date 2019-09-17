@@ -6,23 +6,15 @@ import request from 'request';
 const stew = new(require('stew-select')).Stew();
 import css from 'css';
 import clone from 'lodash/clone';
-
 import { DomOptions, Dom, Html, CSSStylesheet } from '@qualweb/get-dom-puppeteer';
-
-/**
- * PAGE USER AGENT
- */
-const DEFAULT_DESKTOP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:22.0) Gecko/20100101 Firefox/22.0';
-const DEFAULT_MOBILE_USER_AGENT = 'Mozilla/5.0 (Linux; U; Android 2.2; en-us; DROID2 GLOBAL Build/S273) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1';
-
-/**
- * Page VIEWPORT size
- */
-const DEFAULT_DESKTOP_PAGE_VIEWPORT_WIDTH = 1366;
-const DEFAULT_DESKTOP_PAGE_VIEWPORT_HEIGHT = 768;
-
-const DEFAULT_MOBILE_PAGE_VIEWPORT_WIDTH = 1920;
-const DEFAULT_MOBILE_PAGE_VIEWPORT_HEIGHT = 1080;
+import { 
+  DEFAULT_DESKTOP_USER_AGENT,
+  DEFAULT_MOBILE_USER_AGENT,
+  DEFAULT_DESKTOP_PAGE_VIEWPORT_WIDTH,
+  DEFAULT_DESKTOP_PAGE_VIEWPORT_HEIGHT,
+  DEFAULT_MOBILE_PAGE_VIEWPORT_WIDTH,
+  DEFAULT_MOBILE_PAGE_VIEWPORT_HEIGHT
+} from './constants';
 
 function get_request_data(headers: (request.UrlOptions & request.CoreOptions)) {
   return new Promise((resolve: any, reject: any) => {
@@ -112,13 +104,12 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
       isLandscape: false
     });
   }
-  const result = {};
-  page.on('response',async response => {
+  const plainStylesheets = {};
+  page.on('response', async response => {
     if(response.request().resourceType() === 'stylesheet') {
-      // console.warn(await response);
-      let url = await response.url();
-      let content = await response.text();
-      result[url] = content;
+      const url = await response.url();
+      const content = await response.text();
+      plainStylesheets[url] = content;
     }
   });
 
@@ -139,6 +130,8 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
         if (computedStyle) {
           element.setAttribute('computed-style', getComputedStyle(element).cssText);
+          element.setAttribute('computed-style-before', getComputedStyle(element, ':before').cssText);
+          element.setAttribute('computed-style-after', getComputedStyle(element, ':after').cssText);
         }
 
         if (elementsPosition) {
@@ -166,9 +159,9 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
     return document.documentElement.outerHTML;
   }, 
-    options ? options.computedStyle || false : false, 
-    options ? options.elementsPosition || false : false,
-    options ? options.generateIds || false : false);
+    options ? options.computedStyle || true : true, 
+    options ? options.elementsPosition || true : true,
+    options ? options.generateIds || true : true);
 
   await browser.close();
 
@@ -193,7 +186,7 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
     title: title !== '' ? title : undefined
   }
 
-  return {processed, result};
+  return { processed, plainStylesheets };
 }
 
 function parseHTML(html: string): DomElement[] {
@@ -218,27 +211,27 @@ function parseHTML(html: string): DomElement[] {
   return parsed;
 }
 
-async function parseStylesheets(files: any): Promise<CSSStylesheet[]> {
+async function parseStylesheets(plainStylesheets: any): Promise<CSSStylesheet[]> {
   
-  let result: CSSStylesheet[] = new Array<CSSStylesheet>();
+  let stylesheets: CSSStylesheet[] = new Array<CSSStylesheet>();
 
-  for (const file in files){
+  for (const file in plainStylesheets){
     const stylesheet: CSSStylesheet = {file, content: {}};
     if (stylesheet.content) {
-      stylesheet.content.plain = files[file];
-      stylesheet.content.parsed = css.parse(files[file], {'silent':true}); //don't throw errors
-      result.push(clone(stylesheet));
+      stylesheet.content.plain = plainStylesheets[file];
+      stylesheet.content.parsed = css.parse(plainStylesheets[file], { silent: true }); //doesn't throw errors
+      stylesheets.push(clone(stylesheet));
     }
   }
   
-  return result;
+  return stylesheets;
 }
 
 async function getDom(url: string, options?: DomOptions): Promise<Dom> {
   
   const source: Html = await getSourceHTML(url, options);
-  const { processed, result } = await getProcessedHTML(url, options);
-  const stylesheets: CSSStylesheet[] = await parseStylesheets(result);
+  const { processed, plainStylesheets } = await getProcessedHTML(url, options);
+  const stylesheets: CSSStylesheet[] = await parseStylesheets(plainStylesheets);
   
   return {
     source,
