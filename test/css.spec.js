@@ -11,11 +11,19 @@ describe('Testing CSS', function() {
     expect(stylesheets).to.not.be.undefined;
   });
 
-  it('pseudo selector :after', async function() {
+  it('pseudo selector :before', async function() {
     this.timeout(10 * 1000);
     const { processed } = await getDom(URL);
     const img = stew.select_first(processed.html.parsed, 'img');
 
-    expect(img.attribs['computed-style']).to.be.not.equal(img.attribs['computed-style-after']);
+    expect(img.attribs['computed-style-before']).to.be.not.equal(undefined);
+  });
+
+  it.only('pseudo selector :after', async function() {
+    this.timeout(10 * 1000);
+    const { processed } = await getDom(URL);
+    const img = stew.select_first(processed.html.parsed, 'img');
+    
+    expect(img.attribs['computed-style-after']).to.be.not.equal(undefined);
   });
 });

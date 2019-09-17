@@ -159,9 +159,9 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
     return document.documentElement.outerHTML;
   }, 
-    options ? options.computedStyle || true : true, 
-    options ? options.elementsPosition || true : true,
-    options ? options.generateIds || true : true);
+    options ? !!options.computedStyle && true : true, 
+    options ? !!options.elementsPosition && true : true,
+    options ? !!options.generateIds && true : true);
 
   await browser.close();
 

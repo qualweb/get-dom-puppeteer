@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.5] - 17/09/2019
+
+### Fixed
+ - a bug were the computed styles were added to the elements when the flag "computedStyle" was set to false
+
+## [0.0.4] - 17/09/2019
+
+### Added
+ - pseudo selector computed styles (:before, :after) to each element
+
+### Fixed
+ - a bug were the computed styles were not added to the elements when no options were given
+
 ## [0.0.3] - 13/09/2019
 
 ### Added
