@@ -16,7 +16,7 @@ import {
   DEFAULT_MOBILE_PAGE_VIEWPORT_HEIGHT
 } from './constants';
 
-function get_request_data(headers: (request.UrlOptions & request.CoreOptions)) {
+function getRequestData(headers: (request.UrlOptions & request.CoreOptions)) {
   return new Promise((resolve: any, reject: any) => {
     request(headers, (error: any, response: request.Response, body: string) => {
       if (error) {
@@ -38,7 +38,7 @@ async function getSourceHTML(url: string, options?: DomOptions): Promise<Html> {
     }
   };
 
-  const data: any = await get_request_data(headers);
+  const data: any = await getRequestData(headers);
   const sourceHTML: string = data.body.toString().trim();
 
   const parsedHTML = parseHTML(sourceHTML);
@@ -155,6 +155,19 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
     if (computedStyle || elementsPosition || generateIds) {
       processData(document.activeElement);
+
+      var windowInnerHeight = window.innerHeight;
+      var windowInnerWidth = window.innerWidth;
+      var documentClientHeight = document.documentElement.clientHeight;
+      var documentClientWidth = document.documentElement.clientWidth;
+
+      //var body = document.getElementsByName('body')[0];
+      if (document.activeElement) {
+        document.activeElement.setAttribute('window-inner-height', windowInnerHeight.toString());
+        document.activeElement.setAttribute('window-inner-width', windowInnerWidth.toString());
+        document.activeElement.setAttribute('document-client-height', documentClientHeight.toString());
+        document.activeElement.setAttribute('document-client-width', documentClientWidth.toString());
+      }
     }
 
     return document.documentElement.outerHTML;
