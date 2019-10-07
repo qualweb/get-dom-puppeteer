@@ -118,11 +118,12 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
   });
 
   const processedHTML = await page.evaluate((computedStyle, elementsPosition, generateIds) => {
-    
+
     var id = 1;
 
     function processData(element) {
-      if (element) {
+
+      if (element && element.name !== 'head') {
         if (generateIds && !element.getAttribute('id')) {
           element.setAttribute('id', 'qw-generated-id-' + id);
           id++;
@@ -154,25 +155,25 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
     }
 
     if (computedStyle || elementsPosition || generateIds) {
-      processData(document.activeElement);
+      var html = document.getElementsByTagName('html')[0];
+      processData(html);
 
       var windowInnerHeight = window.innerHeight;
       var windowInnerWidth = window.innerWidth;
       var documentClientHeight = document.documentElement.clientHeight;
       var documentClientWidth = document.documentElement.clientWidth;
 
-      //var body = document.getElementsByName('body')[0];
-      if (document.activeElement) {
-        document.activeElement.setAttribute('window-inner-height', windowInnerHeight.toString());
-        document.activeElement.setAttribute('window-inner-width', windowInnerWidth.toString());
-        document.activeElement.setAttribute('document-client-height', documentClientHeight.toString());
-        document.activeElement.setAttribute('document-client-width', documentClientWidth.toString());
+      if (html) {
+        html.setAttribute('window-inner-height', windowInnerHeight.toString());
+        html.setAttribute('window-inner-width', windowInnerWidth.toString());
+        html.setAttribute('document-client-height', documentClientHeight.toString());
+        html.setAttribute('document-client-width', documentClientWidth.toString());
       }
     }
 
     return document.documentElement.outerHTML;
-  }, 
-    options ? !!options.computedStyle && true : true, 
+  },
+    options ? !!options.computedStyle && true : true,
     options ? !!options.elementsPosition && true : true,
     options ? !!options.generateIds && true : true);
 

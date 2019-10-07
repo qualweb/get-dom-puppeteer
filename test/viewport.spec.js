@@ -9,7 +9,8 @@ describe('Viewport test', function() {
     this.timeout(10 * 1000);
     const dom = await getDom(URL);
 
-    const body = stew.select_first(dom.processed.html.parsed, 'body');
-    expect(Object.keys(body.attribs)).to.be.an('array').and.to.include('window-inner-height');
+    const html = stew.select_first(dom.processed.html.parsed, 'html');
+    
+    expect(Object.keys(html.attribs)).to.be.an('array').and.to.include('window-inner-height');
   });
 });
