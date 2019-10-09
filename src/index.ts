@@ -284,25 +284,27 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
       try{//don't crash the program if the css syntax is wrong
         let stewResult = stew.select(dom, cssObject['selectors'].toString());
         if(stewResult.length > 0){
-          let cookedStew = {};
-          if(parentType){
-            cookedStew['media'] = parentType;
-          }
           for(const item of stewResult){
             for (const declaration of declarations) {
               if (declaration['property'] && declaration['value'] ) {
                 if(!item['attribs']['css'])
                   item['attribs']['css'] = {}
-                  if(item['attribs']['css'][declaration['property']] &&
-                    item['attribs']['css'][declaration['property']].includes("!important"))
-                    continue;
-                  else
-                    item['attribs']['css'][declaration['property']] = declaration['value'];
+                if(item['attribs']['css'][declaration['property']] &&
+                  item['attribs']['css'][declaration['property']].includes("!important")){
+                  continue;
+                }else{
+                  item['attribs']['css'][declaration['property']] = {}
+                  if(parentType){
+                    item['attribs']['css'][declaration['property']]['media'] = parentType;
+                  }
+                  item['attribs']['css'][declaration['property']]['value'] = declaration['value'];
+                }
               }
             }
           }
         }
       }catch(err){
+        console.warn(err)
       }
     }
   }
