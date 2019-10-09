@@ -289,8 +289,8 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
               if (declaration['property'] && declaration['value'] ) {
                 if(!item['attribs']['css'])
                   item['attribs']['css'] = {}
-                if(item['attribs']['css'][declaration['property']] &&
-                  item['attribs']['css'][declaration['property']].includes("!important")){
+                if(item['attribs']['css'][declaration['property']] && item['attribs']['css'][declaration['property']]['value'] &&
+                  item['attribs']['css'][declaration['property']]['value'].includes("!important")){
                   continue;
                 }else{
                   item['attribs']['css'][declaration['property']] = {}
