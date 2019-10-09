@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.7] - 09/10/2019
+
+### Merged
+ - viewport attributes branch
+
+### Fixed
+ - bugs when given custom options
+
+## [0.0.6] - 07/10/2019
+
+### Added
+ - computed styles to the html element
+
+### Changed
+ - viewport attributes from the body elemento to the html element
+
 ## [0.0.5] - 17/09/2019
 
 ### Fixed

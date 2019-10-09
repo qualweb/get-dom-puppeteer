@@ -19,7 +19,7 @@ describe('Testing CSS', function() {
     expect(img.attribs['computed-style-before']).to.be.not.equal(undefined);
   });
 
-  it.only('pseudo selector :after', async function() {
+  it('pseudo selector :after', async function() {
     this.timeout(10 * 1000);
     const { processed } = await getDom(URL);
     const img = stew.select_first(processed.html.parsed, 'img');

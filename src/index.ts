@@ -16,7 +16,7 @@ import {
   DEFAULT_MOBILE_PAGE_VIEWPORT_HEIGHT
 } from './constants';
 
-function get_request_data(headers: (request.UrlOptions & request.CoreOptions)) {
+function getRequestData(headers: (request.UrlOptions & request.CoreOptions)) {
   return new Promise((resolve: any, reject: any) => {
     request(headers, (error: any, response: request.Response, body: string) => {
       if (error) {
@@ -38,7 +38,7 @@ async function getSourceHTML(url: string, options?: DomOptions): Promise<Html> {
     }
   };
 
-  const data: any = await get_request_data(headers);
+  const data: any = await getRequestData(headers);
   const sourceHTML: string = data.body.toString().trim();
 
   const parsedHTML = parseHTML(sourceHTML);
@@ -90,9 +90,9 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
         viewPort.height = options.resolution.height;
       }
     }
-    viewPort.isMobile = options.mobile || false;
-    viewPort.isLandscape = options.landscape || false;
-    viewPort.hasTouch = options.mobile || false;
+    viewPort.isMobile = !!options.mobile;
+    viewPort.isLandscape = options.landscape !== undefined ? options.landscape : viewPort.width > viewPort.height;
+    viewPort.hasTouch = !!options.mobile;
 
     await page.setViewport(viewPort);
   } else {
@@ -101,13 +101,13 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
       height: DEFAULT_DESKTOP_PAGE_VIEWPORT_HEIGHT,
       isMobile: false,
       hasTouch: false,
-      isLandscape: false
+      isLandscape: true
     });
   }
   const plainStylesheets = {};
   page.on('response', async response => {
     if(response.request().resourceType() === 'stylesheet') {
-      const url = await response.url();
+      const url = response.url();
       const content = await response.text();
       plainStylesheets[url] = content;
     }
@@ -118,11 +118,12 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
   });
 
   const processedHTML = await page.evaluate((computedStyle, elementsPosition, generateIds) => {
-    
+
     var id = 1;
 
     function processData(element) {
-      if (element) {
+
+      if (element && element.name !== 'head') {
         if (generateIds && !element.getAttribute('id')) {
           element.setAttribute('id', 'qw-generated-id-' + id);
           id++;
@@ -154,7 +155,20 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
     }
 
     if (computedStyle || elementsPosition || generateIds) {
-      processData(document.activeElement);
+      var html = document.getElementsByTagName('html')[0];
+      processData(html);
+
+      var windowInnerHeight = window.innerHeight;
+      var windowInnerWidth = window.innerWidth;
+      var documentClientHeight = document.documentElement.clientHeight;
+      var documentClientWidth = document.documentElement.clientWidth;
+
+      if (html) {
+        html.setAttribute('window-inner-height', windowInnerHeight.toString());
+        html.setAttribute('window-inner-width', windowInnerWidth.toString());
+        html.setAttribute('document-client-height', documentClientHeight.toString());
+        html.setAttribute('document-client-width', documentClientWidth.toString());
+      }
     }
 
     return document.documentElement.outerHTML;
@@ -213,7 +227,7 @@ function parseHTML(html: string): DomElement[] {
 
 async function parseStylesheets(plainStylesheets: any): Promise<CSSStylesheet[]> {
   
-  let stylesheets: CSSStylesheet[] = new Array<CSSStylesheet>();
+  const stylesheets: CSSStylesheet[] = new Array<CSSStylesheet>();
 
   for (const file in plainStylesheets){
     const stylesheet: CSSStylesheet = {file, content: {}};
