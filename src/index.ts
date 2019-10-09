@@ -303,7 +303,6 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
           }
         }
       }catch(err){
-
       }
     }
   }
