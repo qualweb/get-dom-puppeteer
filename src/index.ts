@@ -173,9 +173,9 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
     return document.documentElement.outerHTML;
   },
-    options ? !!options.computedStyle && true : true,
-    options ? !!options.elementsPosition && true : true,
-    options ? !!options.generateIds && true : true);
+    options && options.computedStyle ? options.computedStyle : true,
+    options && options.elementsPosition ? options.elementsPosition : true,
+    options && options.generateIds ? options.generateIds : true);
 
   await browser.close();
 
@@ -198,6 +198,12 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
     },
     elementCount: elements.length,
     title: title !== '' ? title : undefined
+  }
+
+  //save the css that is in the HTML code
+  let styles = stew.select(parsedHTML, 'style');
+  for(let i = 0; i < styles.length; i++){
+    plainStylesheets['html'+i] = styles[i]['children'][0]['data'];
   }
 
   return { processed, plainStylesheets };
@@ -275,25 +281,29 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
   function loopDeclarations(dom: any, cssObject: any, parentType?: string): void {
     let declarations = cssObject['declarations'];
     if(declarations && cssObject['selectors'] && !cssObject['selectors'].toString().includes('@-ms-viewport') && !(cssObject['selectors'].toString() === ":focus")){//stew crashes with this selectors | Note   The @-ms-viewport property is behind an experimental flag and turned off by default in Microsoft Edge.
-      let stewResult = stew.select(dom, cssObject['selectors'].toString());
-      if(stewResult.length > 0){
-        let cookedStew = {};
-        if(parentType){
-          cookedStew['media'] = parentType;
-        }
-        for(const item of stewResult){
-          for (const declaration of declarations) {
-            if (declaration['property'] && declaration['value'] ) {
-              if(!item['attribs']['css'])
-                item['attribs']['css'] = {}
-                if(item['attribs']['css'][declaration['property']] &&
-                  item['attribs']['css'][declaration['property']].includes("!important"))
-                  console.log("DO NOTHING!");
-                else
-                  item['attribs']['css'][declaration['property']] = declaration['value'];
+      try{//don't crash the program if the css syntax is wrong
+        let stewResult = stew.select(dom, cssObject['selectors'].toString());
+        if(stewResult.length > 0){
+          let cookedStew = {};
+          if(parentType){
+            cookedStew['media'] = parentType;
+          }
+          for(const item of stewResult){
+            for (const declaration of declarations) {
+              if (declaration['property'] && declaration['value'] ) {
+                if(!item['attribs']['css'])
+                  item['attribs']['css'] = {}
+                  if(item['attribs']['css'][declaration['property']] &&
+                    item['attribs']['css'][declaration['property']].includes("!important"))
+                    continue;
+                  else
+                    item['attribs']['css'][declaration['property']] = declaration['value'];
+              }
             }
           }
         }
+      }catch(err){
+
       }
     }
   }
