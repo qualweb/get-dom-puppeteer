@@ -234,7 +234,7 @@ function parseHTML(html: string): DomElement[] {
 async function parseStylesheets(plainStylesheets: any): Promise<CSSStylesheet[]> {
   const stylesheets: CSSStylesheet[] = new Array<CSSStylesheet>();
 
-  for (const file in plainStylesheets){
+  for (const file in plainStylesheets || {}){
     const stylesheet: CSSStylesheet = {file, content: {}};
     if (stylesheet.content) {
       stylesheet.content.plain = plainStylesheets[file];
@@ -248,7 +248,7 @@ async function parseStylesheets(plainStylesheets: any): Promise<CSSStylesheet[]>
 
 async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<any>{
 
-  for (const styleSheet of styleSheets) {
+  for (const styleSheet of styleSheets || []) {
     if(styleSheet.content && styleSheet.content.plain){
         analyseAST(dom, styleSheet.content.parsed);
     }
@@ -264,11 +264,11 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
       loopDeclarations(dom, cssObject, parentType);
     } else {
       if (cssObject['type'] === 'stylesheet') {
-        for (const key of cssObject['stylesheet']['rules']) {
+        for (const key of cssObject['stylesheet']['rules'] || []) {
           analyseAST(dom, key);
         }
       } else {
-        for (const key of cssObject['rules']) {
+        for (const key of cssObject['rules'] || []) {
           if(cssObject['type'] && cssObject['type'] === 'media')
             analyseAST(dom, key, cssObject[cssObject['type']]);
           else
@@ -283,8 +283,8 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
       try{//don't crash the program if the css syntax is wrong
         let stewResult = stew.select(dom, cssObject['selectors'].toString());
         if(stewResult.length > 0){
-          for(const item of stewResult){
-            for (const declaration of declarations) {
+          for(const item of stewResult || []){
+            for (const declaration of declarations || []) {
               if (declaration['property'] && declaration['value'] ) {
                 if(!item['attribs']['css'])
                   item['attribs']['css'] = {}
