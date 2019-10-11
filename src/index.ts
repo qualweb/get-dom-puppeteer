@@ -7,7 +7,7 @@ const stew = new(require('stew-select')).Stew();
 import css from 'css';
 import clone from 'lodash/clone';
 import { DomOptions, Dom, Html, CSSStylesheet } from '@qualweb/get-dom-puppeteer';
-import { 
+import {
   DEFAULT_DESKTOP_USER_AGENT,
   DEFAULT_MOBILE_USER_AGENT,
   DEFAULT_DESKTOP_PAGE_VIEWPORT_WIDTH,
@@ -65,13 +65,13 @@ async function getSourceHTML(url: string, options?: DomOptions): Promise<Html> {
 }
 
 async function getProcessedHTML(url: string, options?: DomOptions): Promise<any> {
-  
+
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
 
   if (options) {
     if (options.userAgent) {
-      await page.setUserAgent(options.userAgent);    
+      await page.setUserAgent(options.userAgent);
     } else if (options.mobile) {
       await page.setUserAgent(DEFAULT_MOBILE_USER_AGENT);
     } else {
@@ -200,6 +200,12 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
     title: title !== '' ? title : undefined
   }
 
+  //save the css that is in the HTML code
+  let styles = stew.select(parsedHTML, 'style');
+  for(let i = 0; i < styles.length; i++){
+    plainStylesheets['html'+i] = styles[i]['children'][0]['data'];
+  }
+
   return { processed, plainStylesheets };
 }
 
@@ -226,7 +232,6 @@ function parseHTML(html: string): DomElement[] {
 }
 
 async function parseStylesheets(plainStylesheets: any): Promise<CSSStylesheet[]> {
-  
   const stylesheets: CSSStylesheet[] = new Array<CSSStylesheet>();
 
   for (const file in plainStylesheets){
@@ -237,16 +242,80 @@ async function parseStylesheets(plainStylesheets: any): Promise<CSSStylesheet[]>
       stylesheets.push(clone(stylesheet));
     }
   }
-  
+
   return stylesheets;
 }
 
+async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<any>{
+
+  for (const styleSheet of styleSheets) {
+    if(styleSheet.content && styleSheet.content.plain){
+        analyseAST(dom, styleSheet.content.parsed);
+    }
+  }
+  function analyseAST(dom: any, cssObject: any, parentType?: string): void {
+    if (cssObject === undefined ||
+      cssObject['type'] === 'comment' ||
+      cssObject['type'] === 'keyframes' ||
+      cssObject['type'] === 'import'){ // ignore
+      return;
+    }
+    if (cssObject['type'] === 'rule' || cssObject['type'] === 'font-face' || cssObject['type'] === 'page') {
+      loopDeclarations(dom, cssObject, parentType);
+    } else {
+      if (cssObject['type'] === 'stylesheet') {
+        for (const key of cssObject['stylesheet']['rules']) {
+          analyseAST(dom, key);
+        }
+      } else {
+        for (const key of cssObject['rules']) {
+          if(cssObject['type'] && cssObject['type'] === 'media')
+            analyseAST(dom, key, cssObject[cssObject['type']]);
+          else
+            analyseAST(dom, key);
+        }
+      }
+    }
+  }
+  function loopDeclarations(dom: any, cssObject: any, parentType?: string): void {
+    let declarations = cssObject['declarations'];
+    if(declarations && cssObject['selectors'] && !cssObject['selectors'].toString().includes('@-ms-viewport') && !(cssObject['selectors'].toString() === ":focus")){//stew crashes with this selectors | Note   The @-ms-viewport property is behind an experimental flag and turned off by default in Microsoft Edge.
+      try{//don't crash the program if the css syntax is wrong
+        let stewResult = stew.select(dom, cssObject['selectors'].toString());
+        if(stewResult.length > 0){
+          for(const item of stewResult){
+            for (const declaration of declarations) {
+              if (declaration['property'] && declaration['value'] ) {
+                if(!item['attribs']['css'])
+                  item['attribs']['css'] = {}
+                if(item['attribs']['css'][declaration['property']] && item['attribs']['css'][declaration['property']]['value'] &&
+                  item['attribs']['css'][declaration['property']]['value'].includes("!important")){
+                  continue;
+                }else{
+                  item['attribs']['css'][declaration['property']] = {}
+                  if(parentType){
+                    item['attribs']['css'][declaration['property']]['media'] = parentType;
+                  }
+                  item['attribs']['css'][declaration['property']]['value'] = declaration['value'];
+                }
+              }
+            }
+          }
+        }
+      }catch(err){
+        console.warn(err)
+      }
+    }
+  }
+}
+
 async function getDom(url: string, options?: DomOptions): Promise<Dom> {
-  
+
   const source: Html = await getSourceHTML(url, options);
   const { processed, plainStylesheets } = await getProcessedHTML(url, options);
   const stylesheets: CSSStylesheet[] = await parseStylesheets(plainStylesheets);
-  
+  await mapCSSElements(processed.html.parsed, stylesheets);
+
   return {
     source,
     processed,
