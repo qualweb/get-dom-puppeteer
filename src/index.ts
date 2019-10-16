@@ -154,6 +154,8 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
       }
     }
 
+    var plainHTML = JSON.parse(JSON.stringify(document.documentElement.outerHTML));
+
     if (computedStyle || elementsPosition || generateIds) {
       var html = document.getElementsByTagName('html')[0];
       processData(html);
@@ -171,7 +173,7 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
       }
     }
 
-    return document.documentElement.outerHTML;
+    return { plainHTML, alteredHTML: document.documentElement.outerHTML };
   }, 
     options && options.computedStyle !== undefined ? options.computedStyle : true,
     options && options.elementsPosition !== undefined ? options.elementsPosition : true,
@@ -179,7 +181,7 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
   await browser.close();
 
-  const parsedHTML = parseHTML(processedHTML);
+  const parsedHTML = parseHTML(processedHTML.alteredHTML);
 
   const elements = stew.select(parsedHTML, '*');
 
@@ -193,7 +195,7 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
 
   const processed: Html = {
     html: {
-      plain: processedHTML,
+      plain: processedHTML.plainHTML,
       parsed: parsedHTML
     },
     elementCount: elements.length,
@@ -302,8 +304,8 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
             }
           }
         }
-      }catch(err){
-        console.warn(err)
+      } catch(err){
+        //console.warn(err)
       }
     }
   }

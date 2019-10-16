@@ -56,4 +56,12 @@ describe('Processed HTML', function() {
       expect(dom.processed.title).to.be.equal('Hello World');
     });
   });
+
+  describe('Plain HTML', function() {
+    it('Should exist', async function() {
+      this.timeout(10 * 1000);
+      const dom = await getDom(URL);
+      expect(dom.processed.html.plain).to.be.a('string').and.to.not.be.undefined;
+    })
+  });
 });
