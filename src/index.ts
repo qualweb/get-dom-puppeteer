@@ -129,6 +129,10 @@ async function getProcessedHTML(url: string, options?: DomOptions): Promise<any>
           id++;
         }
 
+        if (element.name === 'video') {
+          element.setAttribute('duration', element.duration);
+        }
+
         if (computedStyle) {
           element.setAttribute('computed-style', getComputedStyle(element).cssText);
           element.setAttribute('computed-style-before', getComputedStyle(element, ':before').cssText);
