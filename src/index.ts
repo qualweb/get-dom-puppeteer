@@ -313,6 +313,9 @@ async function mapCSSElements(dom: any, styleSheets: CSSStylesheet[]): Promise<a
                 //console.warn(err)
             }
         }
+      }catch(err){
+        //ignore error
+      }
     }
 }
 
